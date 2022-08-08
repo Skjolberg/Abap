@@ -1,19 +1,16 @@
 *&---------------------------------------------------------------------*
-*&  Include           ZEXAMEN_DVM_EVT
+*&  Include           Z_TEST_DVM_EVT
 *&---------------------------------------------------------------------*
-
-" Limpieza de variables, estructuras y tablas internas
 
 INITIALIZATION.
 
-AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_load.
-  PERFORM help_search.
+  PERFORM f01_load_log.
 
-AT SELECTION-SCREEN.
-  PERFORM path_empty.
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_path.
+  PERFORM f_get_path.
 
 START-OF-SELECTION.
-  PERFORM load_path.
 
-END-OF-SELECTION.
-  PERFORM alv_path.
+  PERFORM f01_startflow.
+
+PERFORM f01_write_log.
