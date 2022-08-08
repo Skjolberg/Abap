@@ -28,7 +28,5 @@ global.set('STATUSID_00', '00');
 global.set('STATUSNUMBER_255', '255');
 global.set('STATUSID_SUID01', 'SUID01');
 global.set('STATUSNUMBER_029', '029');
-//global.set('N', '/n');
-//global.set('N', '/n');
 
 return msg;
