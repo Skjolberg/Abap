@@ -1,13 +1,16 @@
 *&---------------------------------------------------------------------*
-*& Report ZEXAMEN_DVM
+*& Report Z_TEST_DVM
 *&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT z_test_dvm.
 
-REPORT zexamen_dvm.
+INCLUDE z_test_dvm_top.
 
-INCLUDE zexamen_dvm_top.
+INCLUDE z_test_dvm_sel.
 
-INCLUDE zexamen_dvm_sel.
+INCLUDE z_test_dvm_class.
 
-INCLUDE zexamen_dvm_evt.
+INCLUDE z_test_dvm_evt.
 
-INCLUDE zexamen_dvm_frm.
+INCLUDE z_test_dvm_f01.
