@@ -1,106 +1,150 @@
 *&---------------------------------------------------------------------*
-*&  Include           ZEXAMEN_DVM_FRM
+*&  Include           Z_TEST_DVM_F01
 *&---------------------------------------------------------------------*
 
-FORM help_search .
+FORM f01_startflow.
 
-  DATA: lv_rc       TYPE i,
-        lt_filename TYPE filetable.
+  DATA: lo_class TYPE REF TO z_class.
+  CREATE OBJECT lo_class.
 
-  CALL METHOD cl_gui_frontend_services=>file_open_dialog
-    CHANGING
-      file_table              = lt_filename
-      rc                      = lv_rc
-    EXCEPTIONS
-      file_open_dialog_failed = 1
-      cntl_error              = 2
-      error_no_gui            = 3
-      not_supported_by_gui    = 4
-      OTHERS                  = 5.
-  IF sy-subrc EQ 0.
-    IF lt_filename IS NOT INITIAL.
-      p_load = lt_filename[ 1 ].
-    ENDIF.
-
+  IF rb_ins IS NOT INITIAL.
+    lo_class->insert( ).
+  ELSEIF rb_upd IS NOT INITIAL.
+    lo_class->modify( ).
+  ELSEIF rb_del IS NOT INITIAL.
+    lo_class->delete( ).
   ELSE.
-
-    WRITE 'Fichero no encontrado. '.
-
+    lo_class->vista( ).
+    IF gt_data IS NOT INITIAL.
+      PERFORM f01_visdata.
+    ENDIF.
   ENDIF.
-ENDFORM.                    " get_file
 
-" Check path empty
-FORM path_empty.
+ENDFORM.
 
-  IF p_load IS INITIAL.
+FORM f01_load_log.
 
-    MESSAGE 'No se han seleccionado datos' TYPE 'E'.
+  DATA: lv_path TYPE char50,
+        lv_row  TYPE ty_log,
+        ls_log  TYPE ty_log.
+  lv_path = '.\Log.txt'.
+
+
+  OPEN DATASET lv_path FOR INPUT IN TEXT MODE ENCODING DEFAULT.
+  IF sy-subrc = 0.
+    DO.
+      READ DATASET lv_path INTO lv_row.
+      IF sy-subrc = 0.
+        APPEND lv_row TO gt_log.
+      ELSE.
+        EXIT.
+      ENDIF.
+    ENDDO.
+
+    CLOSE DATASET lv_path.
 
   ENDIF.
 
 ENDFORM.
 
+FORM f01_write_log.
 
-FORM load_path .
+  DATA: lv_path TYPE char50,
+        lv_row  TYPE ty_log,
+        ls_log  TYPE ty_log.
+  lv_path = '.\Log.txt'.
 
-  DATA: lt_table TYPE TABLE OF string,
-        ls_row   TYPE string.
 
-  CALL METHOD cl_gui_frontend_services=>gui_upload
-    EXPORTING
-      filename                = p_load
-      filetype                = 'ASC'
-*     has_field_separator     = ';'
-    CHANGING
-      data_tab                = lt_table
-    EXCEPTIONS
-      file_open_error         = 1
-      file_read_error         = 2
-      no_batch                = 3
-      gui_refuse_filetransfer = 4
-      invalid_type            = 5
-      no_authority            = 6
-      unknown_error           = 7
-      bad_data_format         = 8
-      header_not_allowed      = 9
-      separator_not_allowed   = 10
-      header_too_long         = 11
-      unknown_dp_error        = 12
-      access_denied           = 13
-      dp_out_of_memory        = 14
-      disk_full               = 15
-      dp_timeout              = 16
-      not_supported_by_gui    = 17
-      error_no_gui            = 18
-      OTHERS                  = 19.
+  OPEN DATASET lv_path FOR OUTPUT IN TEXT MODE ENCODING DEFAULT.
+  IF sy-subrc = 0.
+    LOOP AT gt_log INTO lv_row.
+      TRANSFER lv_row-log TO lv_path.
 
-  IF sy-subrc EQ 0.
-    LOOP AT lt_table INTO ls_row.
-
-      ge_file_alv-include-mandt = sy-mandt.
-
-      SPLIT ls_row AT ';'
-        INTO
-          ge_file_alv-include-carrid
-          ge_file_alv-include-carrname
-          ge_file_alv-include-currcode
-          ge_file_alv-include-url.
-
-      " 2 Campos extras que se piden (icono y mensaje)
-      ge_file_alv-t_ico = ''.
-      ge_file_alv-t_msg(100) = ''.
-      " Introducción de los datos a la tabla
-      APPEND ge_file_alv TO gt_file.
     ENDLOOP.
+
+    CLOSE DATASET lv_path.
+
+  ENDIF.
+
+ENDFORM.
+
+FORM f_get_path.
+    CALL FUNCTION 'F4_FILENAME' "Read Local File
+      EXPORTING
+        program_name  = syst-repid
+        dynpro_number = syst-dynnr
+      IMPORTING
+        file_name     = p_path.
+*  ENDIF.
+  IF sy-subrc NE 0.
+    CLEAR p_path.
+*    MESSAGE text-003 TYPE gc_error.
   ENDIF.
 ENDFORM.
 
-FORM alv_path .
 
-  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
-    EXPORTING
-      it_fieldcat = gt_file_alv
-    TABLES
-      t_outtab    = gt_file_alv.
+FORM f01_visdata.
+
+  DATA: lo_table          TYPE REF TO cl_salv_table.
+  DATA: lo_functions_list TYPE REF TO cl_salv_functions_list.
+  DATA: lo_columns        TYPE REF TO cl_salv_columns_table.
+  DATA: lr_column         TYPE REF TO cl_salv_column_table.
+  DATA: lo_layout         TYPE REF TO cl_salv_layout.
+  DATA: ls_key            TYPE salv_s_layout_key.
+  DATA: lo_selection      TYPE REF TO cl_salv_selections.
+
+  " Eventos
+  DATA: lr_events TYPE REF TO cl_salv_events_table.
+  DATA: gr_events TYPE REF TO z_class.
+
+  TRY.
+      cl_salv_table=>factory( IMPORTING r_salv_table = lo_table
+                              CHANGING  t_table      = gt_data ).
+      lo_functions_list = lo_table->get_functions( ).
+      lo_functions_list->set_all( abap_true ).
+      lo_columns = lo_table->get_columns( ).
+      lo_columns->set_optimize( 'X' ).
+
+*      lr_column ?= lo_columns->get_column( 'ZEMPLE' ).
+*      lr_column->set_long_text( TEXT-001 ). lr_column->set_medium_text( TEXT-001 ). lr_column->set_short_text( TEXT-001 ).
+
+*      lr_column ?= lo_columns->get_column( 'FILENAME' ).
+*      lr_column->set_long_text( TEXT-005 ). lr_column->set_medium_text( TEXT-005 ). lr_column->set_short_text( TEXT-006 ).
+
+*    register to the events of cl_salv_table
+
+      lr_events = lo_table->get_event( ).
+
+      CREATE OBJECT gr_events.
+*... §6.1 register to the event USER_COMMAND
+*    SET HANDLER gr_events->on_user_command FOR lr_events.
+*... §6.2 register to the event BEFORE_SALV_FUNCTION
+*    SET HANDLER gr_events->on_before_salv_function FOR lr_events.
+*... §6.3 register to the event AFTER_SALV_FUNCTION
+*    SET HANDLER gr_events->on_after_salv_function FOR lr_events.
+*... §6.4 register to the event DOUBLE_CLICK
+      SET HANDLER gr_events->on_double_click FOR lr_events.
+*... §6.5 register to the event LINK_CLICK
+
+*   Debe rellenar todos los campos de compañía aérea
+*    SET HANDLER gr_events->on_link_click FOR lr_events.
+
+      lo_layout = lo_table->get_layout( ).
+      ls_key-report = sy-repid.
+      lo_layout->set_key( ls_key ).
+      lo_layout->set_save_restriction( cl_salv_layout=>restrict_none ).
+      lo_selection = lo_table->get_selections( ).
+* 1 = una selección. 2 = multiples selecciones con control + click. 3 = multiples selecciones con celda
+      lo_selection->set_selection_mode( 3 ).
+      lo_table->display( ).
+
+    CATCH  cx_salv_msg .
+      MESSAGE TEXT-008 TYPE 'E'.
+
+    CATCH cx_salv_not_found.
+      MESSAGE TEXT-008 TYPE 'E'.
+
+  ENDTRY.
+
 
 ENDFORM.
